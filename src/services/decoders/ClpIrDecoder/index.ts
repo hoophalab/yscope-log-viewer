@@ -131,14 +131,26 @@ class ClpIrDecoder implements Decoder {
         endIdx: number,
         useFilter: boolean
     ): Nullable<DecodeResult[]> {
-        // eslint-disable-next-line no-warning-comments
-        // TODO: Correct DecodeResult typing in `clp-ffi-js` and remove below type assertion.
-        const results =
-            this.#streamReader.decodeRange(beginIdx, endIdx, useFilter) as Nullable<DecodeResult[]>;
+        const resultsObject =
+            this.#streamReader.decodeRange(beginIdx, endIdx, useFilter);
 
-        if (null === results) {
+        console.log(resultsObject);
+
+        if (null === resultsObject) {
             return null;
         }
+
+        const results = resultsObject.map(
+            ({
+                message,
+                timestamp,
+                logLevel,
+                logEventNumber,
+            }): [string, bigint, number, number] => [message,
+                timestamp,
+                logLevel,
+                logEventNumber]
+        );
 
         if (null === this.#formatter) {
             if (this.#streamType === CLP_IR_STREAM_TYPE.STRUCTURED) {
