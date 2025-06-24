@@ -145,11 +145,11 @@ class ClpIrDecoder implements Decoder {
                 message,
                 timestamp,
                 logLevel,
-                logEventNumber,
+                logEventNum,
             }): [string, bigint, number, number] => [message,
                 timestamp,
                 logLevel,
-                logEventNumber]
+                logEventNum]
         );
 
         if (null === this.#formatter) {
