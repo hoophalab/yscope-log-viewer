@@ -154,6 +154,7 @@ const getConfig = <T extends CONFIG_KEY>(key: T): ConfigMap[T] => {
                 timestampKey: window.localStorage.getItem(
                     LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_KEY
                 ),
+                utcOffsetKey: "@timestamp.utc_offset_secs",
             } as DecoderOptions;
             break;
         case CONFIG_KEY.INITIAL_TAB_NAME:

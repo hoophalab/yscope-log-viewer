@@ -21,6 +21,7 @@ interface DecoderOptions {
     logLevelKey: string;
     timestampFormatString: string;
     timestampKey: string;
+    utcOffsetKey: string;
 }
 
 /**
