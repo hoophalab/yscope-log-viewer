@@ -58,6 +58,11 @@ class LogFileManagerProxy {
         return this.loadPage(cursor, isPrettified);
     }
 
+    setTimezone (timezoneName: string): void {
+        const logFileManager = this.#getLogFileManager();
+        logFileManager.setTimezone(timezoneName);
+    }
+
     exportLogs (): void {
         const logFileManager = this.#getLogFileManager();
         logFileManager.exportChunkAndScheduleNext(0);

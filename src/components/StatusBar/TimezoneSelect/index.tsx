@@ -17,6 +17,7 @@ import {
     DEFAULT_TIMEZONE_NAME,
     getTimezoneCategory,
     INTL_SUPPORTED_TIMEZONE_NAMES,
+    LOGGER_TIMEZONE_NAME,
     UTC_TIMEZONE_OFFSET_NAMES,
 } from "../../../typings/date";
 import {UI_ELEMENT} from "../../../typings/states";
@@ -44,6 +45,7 @@ const TimezoneSelect = () => {
     const timezoneNameOptions = useMemo(() => [
         DEFAULT_TIMEZONE_NAME,
         BROWSER_TIMEZONE_NAME,
+        LOGGER_TIMEZONE_NAME,
         ...UTC_TIMEZONE_OFFSET_NAMES,
         ...INTL_SUPPORTED_TIMEZONE_NAMES.filter(
             (tzName) => tzName !== BROWSER_TIMEZONE_NAME

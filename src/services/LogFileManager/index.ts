@@ -231,6 +231,17 @@ class LogFileManager {
         this.#decoder.setFormatterOptions(options);
     }
 
+    setTimezone (timezoneName: string) {
+        if (this.#decoder instanceof ClpIrDecoder) {
+            const decoder = this.#decoder;
+            decoder.setTimezone(timezoneName);
+        } else {
+            // eslint-disable-next-line no-warning-comments
+            // TODO: We need to rethink error handling in LogFileManager and decoders.
+            console.error("Setting the timezone is not supported in non CLP decoders");
+        }
+    }
+
     /**
      * Sets the log level filter.
      *

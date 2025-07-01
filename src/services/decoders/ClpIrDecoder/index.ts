@@ -6,6 +6,11 @@ import {Dayjs} from "dayjs";
 
 import {Nullable} from "../../../typings/common";
 import {
+    isTimezoneUtcOffsetName,
+    LOGGER_TIMEZONE_NAME,
+    Timezone,
+} from "../../../typings/date";
+import {
     Decoder,
     DecodeResult,
     DecoderOptions,
@@ -16,6 +21,7 @@ import {
 import {Formatter} from "../../../typings/formatters";
 import {JsonObject} from "../../../typings/js";
 import {LogLevelFilter} from "../../../typings/logs";
+import {getUtcOffsetFrom} from "../../../utils/date";
 import YscopeFormatter from "../../formatters/YscopeFormatter";
 import {
     convertToDayjsTimestamp,
@@ -40,6 +46,8 @@ class ClpIrDecoder implements Decoder {
 
     #timestampFormatString: string;
 
+    #timezone: Timezone;
+
     constructor (
         ffiModule: MainModule,
         dataArray: Uint8Array,
@@ -60,6 +68,8 @@ class ClpIrDecoder implements Decoder {
                 structuredIrNamespaceKeys: this.#structuredIrNamespaceKeys,
             });
         }
+
+        this.#timezone = 0;
     }
 
     get irStreamType () : CLP_IR_STREAM_TYPE {
@@ -97,6 +107,16 @@ class ClpIrDecoder implements Decoder {
 
     setLogLevelFilter (logLevelFilter: LogLevelFilter): boolean {
         this.#streamReader.filterLogEvents(logLevelFilter);
+
+        return true;
+    }
+
+    setTimezone (timezoneName: string): boolean {
+        if (isTimezoneUtcOffsetName(timezoneName)) {
+            this.#timezone = getUtcOffsetFrom(timezoneName);
+        } else {
+            this.#timezone = timezoneName;
+        }
 
         return true;
     }
@@ -154,7 +174,7 @@ class ClpIrDecoder implements Decoder {
                 timestamp,
                 logLevel: level,
             } = r;
-            const dayJsTimestamp: Dayjs = convertToDayjsTimestamp(timestamp);
+            const dayJsTimestamp: Dayjs = convertToDayjsTimestamp(timestamp, this.#timezone);
             let fields: JsonObject = {};
 
             try {
@@ -185,10 +205,17 @@ class ClpIrDecoder implements Decoder {
     #formatUnstructuredResults (logEvents: DecodeResult[]): Nullable<DecodeResult[]> {
         for (const r of logEvents) {
             const {
-                message, timestamp,
+                message, timestamp, utcOffset,
             } = r;
 
-            const formattedTimestamp = convertToDayjsTimestamp(timestamp).format(
+            let timezone: Timezone;
+            if (this.#timezone === LOGGER_TIMEZONE_NAME) {
+                timezone = Number(utcOffset);
+            } else {
+                timezone = this.#timezone;
+            }
+
+            const formattedTimestamp = convertToDayjsTimestamp(timestamp, timezone).format(
                 this.#timestampFormatString
             );
 

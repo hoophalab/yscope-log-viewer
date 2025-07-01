@@ -271,8 +271,7 @@ const useViewStore = create<ViewState>((set, get) => ({
         (async () => {
             const {logFileManagerProxy} = useLogFileManagerStore.getState();
             const {isPrettified, updatePageData} = get();
-
-            // await logFileManagerProxy.setTimezone(newTimezoneName);
+            await logFileManagerProxy.setTimezone(newTimezoneName);
             const pageData = await logFileManagerProxy.loadPage(
                 cursor,
                 isPrettified,

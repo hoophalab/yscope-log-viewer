@@ -1,5 +1,6 @@
 import dayjs, {Dayjs} from "dayjs";
 
+import {Timezone} from "../../../typings/date";
 import {
     JsonObject,
     JsonValue,
@@ -48,12 +49,16 @@ const convertToLogLevelValue = (field: JsonValue | undefined): LOG_LEVEL => {
  * Converts a field into a dayjs timestamp if possible.
  *
  * @param field
+ * @param timezone
  * @return The field as a dayjs timestamp or `dayjs.utc(INVALID_TIMESTAMP_VALUE)` if:
  * - the timestamp key doesn't exist in the log.
  * - the timestamp's value is an unsupported type.
  * - the timestamp's value is not a valid dayjs timestamp.
  */
-const convertToDayjsTimestamp = (field: JsonValue | bigint | undefined): dayjs.Dayjs => {
+const convertToDayjsTimestamp = (
+    field: JsonValue | bigint | undefined,
+    timezone: Timezone
+): dayjs.Dayjs => {
     // If the field is an invalid type, then set the timestamp to `INVALID_TIMESTAMP_VALUE`.
     // NOTE: dayjs surprisingly thinks `undefined` is a valid date. See
     // https://day.js.org/docs/en/parse/now#docsNav
@@ -67,7 +72,9 @@ const convertToDayjsTimestamp = (field: JsonValue | bigint | undefined): dayjs.D
         field = INVALID_TIMESTAMP_VALUE;
     }
 
-    let dayjsTimestamp: Dayjs = dayjs.utc(field);
+    let dayjsTimestamp: Dayjs = "number" === typeof timezone ?
+        dayjs.utc(field).utcOffset(timezone) :
+        dayjs.utc(field).tz(timezone);
 
     // Sanitize invalid (e.g., "deadbeef") timestamps to `INVALID_TIMESTAMP_VALUE`; otherwise
     // they'll show up in UI as "Invalid Date".
