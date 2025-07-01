@@ -74,10 +74,11 @@ const updateUrlIfEventOnPage = (
  * @param hashParams
  */
 const updateViewHashParams = (hashParams: UrlHashParams): void => {
-    const {isPrettified, logEventNum} = hashParams;
-    const {updateIsPrettified, setLogEventNum} = useViewStore.getState();
+    const {isPrettified, logEventNum, timezone} = hashParams;
+    const {updateIsPrettified, setLogEventNum, updateTimezoneName} = useViewStore.getState();
 
     updateIsPrettified(isPrettified);
+    updateTimezoneName(timezone);
     setLogEventNum(logEventNum);
 };
 
@@ -127,8 +128,11 @@ const handleHashChange = (ev: Nullable<HashChangeEvent>): UrlHashParams => {
         startQuery();
     }
 
-    // eslint-disable-next-line no-warning-comments
-    // TODO: Remove empty or falsy parameters.
+    // Remove empty or falsy parameters.
+    updateWindowUrlHashParams({
+        ...hashParams,
+    });
+
 
     return hashParams;
 };

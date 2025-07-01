@@ -1,6 +1,7 @@
 import {create} from "zustand";
 
 import {Nullable} from "../typings/common";
+import {DEFAULT_TIMEZONE_NAME} from "../typings/date";
 import {LogLevelFilter} from "../typings/logs";
 import {UI_STATE} from "../typings/states";
 import {
@@ -30,6 +31,7 @@ interface ViewStoreValues {
     logEventNum: number;
     numPages: number;
     pageNum: number;
+    timezoneName: string;
 }
 
 interface ViewStoreActions {
@@ -43,6 +45,7 @@ interface ViewStoreActions {
     loadPageByAction: (navAction: NavigationAction) => void;
     updateIsPrettified: (newIsPrettified: boolean) => void;
     updatePageData: (pageData: PageData) => void;
+    updateTimezoneName: (newTimezoneName: string) => void;
 }
 
 type ViewState = ViewStoreValues & ViewStoreActions;
@@ -54,6 +57,7 @@ const VIEW_STORE_DEFAULT: ViewStoreValues = {
     logEventNum: 0,
     numPages: 0,
     pageNum: 0,
+    timezoneName: DEFAULT_TIMEZONE_NAME,
 };
 
 /**
@@ -234,6 +238,48 @@ const useViewStore = create<ViewState>((set, get) => ({
         setLogEventNum(newLogEventNum);
         const {setUiState} = useUiStore.getState();
         setUiState(UI_STATE.READY);
+    },
+    updateTimezoneName: (newTimezoneName: string) => {
+        if ("" === newTimezoneName) {
+            newTimezoneName = DEFAULT_TIMEZONE_NAME;
+        }
+
+        const {numEvents} = useLogFileStore.getState();
+        if (0 === numEvents) {
+            return;
+        }
+
+        const {timezoneName} = get();
+        if (newTimezoneName === timezoneName) {
+            return;
+        }
+
+        const {setUiState} = useUiStore.getState();
+        setUiState(UI_STATE.FAST_LOADING);
+
+        set({timezoneName: newTimezoneName});
+
+        const {logEventNum} = get();
+        let cursor: CursorType = {code: CURSOR_CODE.LAST_EVENT, args: null};
+        if (VIEW_STORE_DEFAULT.logEventNum !== logEventNum) {
+            cursor = {
+                code: CURSOR_CODE.EVENT_NUM,
+                args: {eventNum: logEventNum},
+            };
+        }
+
+        (async () => {
+            const {logFileManagerProxy} = useLogFileManagerStore.getState();
+            const {isPrettified, updatePageData} = get();
+
+            // await logFileManagerProxy.setTimezone(newTimezoneName);
+            const pageData = await logFileManagerProxy.loadPage(
+                cursor,
+                isPrettified,
+            );
+
+            updatePageData(pageData);
+        })().catch(handleErrorWithNotification);
     },
 }));
 
