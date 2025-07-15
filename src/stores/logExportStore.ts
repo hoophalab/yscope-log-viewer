@@ -2,7 +2,7 @@ import {create} from "zustand";
 
 import LogExportManager, {EXPORT_LOGS_PROGRESS_VALUE_MIN} from "../services/LogExportManager";
 import {Nullable} from "../typings/common";
-import {EXPORT_LOGS_CHUNK_SIZE} from "../utils/config";
+import {EXPORT_LOGS_CHUNK_SIZE} from "../typings/config";
 import useLogFileManagerProxyStore from "./logFileManagerProxyStore";
 import useLogFileStore from "./logFileStore";
 import {handleErrorWithNotification} from "./notificationStore";

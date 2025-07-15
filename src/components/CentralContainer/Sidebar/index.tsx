@@ -100,7 +100,7 @@ const Sidebar = () => {
 
     // On `activeTabName` update, update INITIAL_TAB_NAME in config and adjust panel width.
     useEffect(() => {
-        setConfig({key: CONFIG_KEY.INITIAL_TAB_NAME, value: activeTabName});
+        setConfig({[CONFIG_KEY.INITIAL_TAB_NAME]: activeTabName});
 
         if (null === tabListRef.current) {
             console.error("Unexpected null tabListRef.current");

@@ -66,6 +66,25 @@ const EslintConfig = [
         },
     },
     {
+        rules: {
+            "new-cap": [
+                "error",
+                {
+                    capIsNewExceptions: [
+                        // TypeBox imports
+                        "Type.Enum",
+                        "Type.Index",
+                        "Type.Literal",
+                        "Type.Number",
+                        "Type.Partial",
+                        "Type.Record",
+                        "Value.Parse",
+                    ],
+                },
+            ],
+        },
+    },
+    {
         files: ["test/**/*"],
         ...JestConfig,
     },

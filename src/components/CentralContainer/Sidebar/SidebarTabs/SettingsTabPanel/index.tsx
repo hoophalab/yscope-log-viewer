@@ -15,10 +15,7 @@ import {
 import useNotificationStore from "../../../../../stores/notificationStore";
 import useViewStore from "../../../../../stores/viewStore";
 import {Nullable} from "../../../../../typings/common";
-import {
-    CONFIG_KEY,
-    LOCAL_STORAGE_KEY,
-} from "../../../../../typings/config";
+import {CONFIG_KEY} from "../../../../../typings/config";
 import {LOG_LEVEL} from "../../../../../typings/logs";
 import {DO_NOT_TIMEOUT_VALUE} from "../../../../../typings/notifications";
 import {
@@ -60,8 +57,8 @@ const getConfigFormFields = () => [
                 for syntax.
             </span>
         ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).formatString,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_FORMAT_STRING,
+        initialValue: getConfig(CONFIG_KEY.DECODER_FORMAT_STRING),
+        key: CONFIG_KEY.DECODER_FORMAT_STRING,
         label: "Decoder: Format string",
         type: "text",
     },
@@ -82,8 +79,8 @@ const getConfigFormFields = () => [
                 for syntax.
             </span>
         ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).logLevelKey,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_LOG_LEVEL_KEY,
+        initialValue: getConfig(CONFIG_KEY.DECODER_LOG_LEVEL_KEY),
+        key: CONFIG_KEY.DECODER_LOG_LEVEL_KEY,
         label: "Decoder: Log level key",
         type: "text",
     },
@@ -104,22 +101,22 @@ const getConfigFormFields = () => [
                 for syntax.
             </span>
         ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).timestampKey,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_KEY,
+        initialValue: getConfig(CONFIG_KEY.DECODER_TIMESTAMP_KEY),
+        key: CONFIG_KEY.DECODER_TIMESTAMP_KEY,
         label: "Decoder: Timestamp key",
         type: "text",
     },
     {
         helperText: "[Unstructured-IR] Format string for timestamps in Day.js format.",
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).timestampFormatString,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_FORMAT_STRING,
+        initialValue: getConfig(CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING),
+        key: CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING,
         label: "Decoder: Timestamp format string",
         type: "text",
     },
     {
         helperText: "Number of log messages to display per page.",
         initialValue: getConfig(CONFIG_KEY.PAGE_SIZE),
-        key: LOCAL_STORAGE_KEY.PAGE_SIZE,
+        key: CONFIG_KEY.PAGE_SIZE,
         label: "View: Page size",
         type: "number",
     },
@@ -149,22 +146,20 @@ const SettingsTabPanel = () => {
         const formData = new FormData(ev.target as HTMLFormElement);
         const getFormDataValue = (key: string) => formData.get(key) as string;
 
-        const formatString = getFormDataValue(LOCAL_STORAGE_KEY.DECODER_OPTIONS_FORMAT_STRING);
-        const logLevelKey = getFormDataValue(LOCAL_STORAGE_KEY.DECODER_OPTIONS_LOG_LEVEL_KEY);
+        const formatString = getFormDataValue(CONFIG_KEY.DECODER_FORMAT_STRING);
+        const logLevelKey = getFormDataValue(CONFIG_KEY.DECODER_LOG_LEVEL_KEY);
         const timestampFormatString = getFormDataValue(
-            LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_FORMAT_STRING
+            CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING
         );
-        const timestampKey = getFormDataValue(LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_KEY);
-        const pageSize = getFormDataValue(LOCAL_STORAGE_KEY.PAGE_SIZE);
+        const timestampKey = getFormDataValue(CONFIG_KEY.DECODER_TIMESTAMP_KEY);
+        const pageSize = getFormDataValue(CONFIG_KEY.PAGE_SIZE);
 
-        let error: Nullable<string> = null;
-        error ||= setConfig({
-            key: CONFIG_KEY.DECODER_OPTIONS,
-            value: {formatString, logLevelKey, timestampFormatString, timestampKey},
-        });
-        error ||= setConfig({
-            key: CONFIG_KEY.PAGE_SIZE,
-            value: Number(pageSize),
+        const error: Nullable<string> = setConfig({
+            [CONFIG_KEY.DECODER_FORMAT_STRING]: formatString,
+            [CONFIG_KEY.DECODER_LOG_LEVEL_KEY]: logLevelKey,
+            [CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING]: timestampFormatString,
+            [CONFIG_KEY.DECODER_TIMESTAMP_KEY]: timestampKey,
+            [CONFIG_KEY.PAGE_SIZE]: Number(pageSize),
         });
 
         if (null !== error) {

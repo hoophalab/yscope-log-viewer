@@ -1,0 +1,14 @@
+{
+  "default": {
+    "configUpdate": {
+      "decoderOptions/formatString": "{@timestamp} {log\\.level} {message}",
+      "decoderOptions/logLevelKey": "log.level",
+      "decoderOptions/timestampKey": "@timestamp",
+      "pageSize": 10000
+    },
+    "filePathPrefixes": [
+      "/prod/logging/athena"
+    ],
+    "lastModificationTimestampMillis": 0
+  }
+}
