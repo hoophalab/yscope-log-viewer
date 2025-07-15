@@ -3,7 +3,10 @@ import {create} from "zustand";
 
 import {Nullable} from "../typings/common";
 import {CONFIG_KEY} from "../typings/config";
-import {Metadata} from "../typings/decoders";
+import {
+    DecoderOptions,
+    Metadata,
+} from "../typings/decoders";
 import {LOG_LEVEL} from "../typings/logs";
 import {
     LONG_AUTO_DISMISS_TIMEOUT_MILLIS,
@@ -96,6 +99,30 @@ const handleQueryResults = (progress: number, results: QueryResults) => {
     mergeQueryResults(results);
 };
 
+/**
+ * Retrieves decoder options from the application configuration.
+ *
+ * This function fetches various configuration settings related to decoding,
+ * such as the format string, log level key, timestamp key, and timestamp format string.
+ * It then compiles these settings into a `DecoderOptions` object.
+ *
+ * @return An object containing the configured decoder options.
+ */
+const getDecoderOptionsConfig = () : DecoderOptions => {
+    const formatString = getConfig(CONFIG_KEY.DECODER_FORMAT_STRING);
+    const logLevelKey = getConfig(CONFIG_KEY.DECODER_LOG_LEVEL_KEY);
+    const timestampKey = getConfig(CONFIG_KEY.DECODER_TIMESTAMP_KEY);
+    const timestampFormatString = getConfig(CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING);
+    const decoderOptions: DecoderOptions = {
+        formatString,
+        logLevelKey,
+        timestampKey,
+        timestampFormatString,
+    };
+
+    return decoderOptions;
+};
+
 
 const useLogFileStore = create<LogFileState>((set) => ({
     ...LOG_FILE_STORE_DEFAULT,
@@ -133,7 +160,7 @@ const useLogFileStore = create<LogFileState>((set) => ({
 
         (async () => {
             const {logFileManagerProxy} = useLogFileManagerProxyStore.getState();
-            const decoderOptions = getConfig(CONFIG_KEY.DECODER_OPTIONS);
+            const decoderOptions = getDecoderOptionsConfig();
             const fileInfo = await logFileManagerProxy.loadFile(
                 {
                     decoderOptions: decoderOptions,

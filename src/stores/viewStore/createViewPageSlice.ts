@@ -114,11 +114,10 @@ const createViewPageSlice: StateCreator<
             const {fileSrc, loadFile} = useLogFileStore.getState();
             const {logEventNum} = get();
             if (null === fileSrc || VIEW_EVENT_DEFAULT.logEventNum === logEventNum) {
-                throw new Error(
-                    `Unexpected fileSrc=${JSON.stringify(
-                        fileSrc
-                    )}, logEventNum=${logEventNum} when reloading.`
-                );
+                // When applying the settings without opening a file,
+                // loadPageByAction is called with `null === fileSrc`.
+                // We shouldn't throw an error here.
+                return;
             }
             loadFile(fileSrc, {
                 code: CURSOR_CODE.EVENT_NUM,

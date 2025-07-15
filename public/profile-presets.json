@@ -1,0 +1,24 @@
+{
+  "default": {
+    "config": {
+      "decoderOptions/formatString": "",
+      "decoderOptions/logLevelKey": "log.level",
+      "decoderOptions/timestampKey": "@timestamp",
+      "decoderOptions/timestampFormatString": "YYYY-MM-DDTHH:mm:ss.SSSZ",
+      "pageSize": 10000
+    },
+    "filePathRegExps": [],
+    "lastModificationTimestampMillis": 0
+  },
+  "aws": {
+    "config": {
+      "decoderOptions/formatString": "{@timestamp} {message}",
+      "decoderOptions/logLevelKey": "log.level",
+      "decoderOptions/timestampKey": "@timestamp",
+      "decoderOptions/timestampFormatString": "YYYY",
+      "pageSize": 10000
+    },
+    "filePathRegExps": ["^https://yscope.s3.us-east-2.amazonaws.com*"],
+    "lastModificationTimestampMillis": 0
+  }
+}

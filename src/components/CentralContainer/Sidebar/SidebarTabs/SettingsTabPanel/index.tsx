@@ -1,4 +1,9 @@
-import React, {useCallback} from "react";
+import React, {
+    useCallback,
+    useEffect,
+    useState,
+    useSyncExternalStore,
+} from "react";
 
 import {
     Box,
@@ -7,17 +12,28 @@ import {
     FormControl,
     FormHelperText,
     FormLabel,
-    Input,
+    IconButton,
     Link,
-    Textarea,
+    Option,
+    Select,
+    Stack,
+    ToggleButtonGroup,
+    Tooltip,
+    Typography,
 } from "@mui/joy";
+
+import CheckBoxIcon from "@mui/icons-material/CheckBox";
+import DeleteIcon from "@mui/icons-material/Delete";
+import LockIcon from "@mui/icons-material/Lock";
+import SdStorageIcon from "@mui/icons-material/SdStorage";
 
 import useNotificationStore from "../../../../../stores/notificationStore";
 import useViewStore from "../../../../../stores/viewStore";
 import {Nullable} from "../../../../../typings/common";
 import {
     CONFIG_KEY,
-    LOCAL_STORAGE_KEY,
+    ConfigMap,
+    ProfileName,
 } from "../../../../../typings/config";
 import {LOG_LEVEL} from "../../../../../typings/logs";
 import {DO_NOT_TIMEOUT_VALUE} from "../../../../../typings/notifications";
@@ -29,19 +45,39 @@ import {ACTION_NAME} from "../../../../../utils/actions";
 import {
     getConfig,
     setConfig,
+    settingsManager,
 } from "../../../../../utils/config";
 import CustomTabPanel from "../CustomTabPanel";
+import ConfigInput, {ConfigInputProps} from "./ConfigInput";
+import CreateProfileButton from "./CreateProfileButton";
 import ThemeSwitchFormField from "./ThemeSwitchFormField";
 
 import "./index.css";
 
 
 /**
- * Gets form fields information for user input of configuration values.
+ * Gets form fields information for user input of global configuration values.
  *
  * @return A list of form fields information.
  */
-const getConfigFormFields = () => [
+const getGlobalFormFields = (): ConfigInputProps[] => [
+    {
+        helperText: <span>Number of log messages to display per page.</span>,
+        initialValue: String(getConfig(CONFIG_KEY.PAGE_SIZE)),
+        label: "View: Page size",
+        name: CONFIG_KEY.PAGE_SIZE,
+        profileName: null,
+        type: "number",
+    },
+];
+
+/**
+ * Gets form fields information for user input of profiled configuration values.
+ *
+ * @param profileName
+ * @return A list of form fields information.
+ */
+const getProfileManagedFormFields = (profileName: ProfileName): ConfigInputProps[] => [
     {
         helperText: (
             <span>
@@ -60,9 +96,10 @@ const getConfigFormFields = () => [
                 for syntax.
             </span>
         ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).formatString,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_FORMAT_STRING,
+        initialValue: getConfig(CONFIG_KEY.DECODER_FORMAT_STRING, profileName),
         label: "Decoder: Format string",
+        name: CONFIG_KEY.DECODER_FORMAT_STRING,
+        profileName: profileName,
         type: "text",
     },
     {
@@ -82,9 +119,10 @@ const getConfigFormFields = () => [
                 for syntax.
             </span>
         ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).logLevelKey,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_LOG_LEVEL_KEY,
+        initialValue: getConfig(CONFIG_KEY.DECODER_LOG_LEVEL_KEY, profileName),
         label: "Decoder: Log level key",
+        name: CONFIG_KEY.DECODER_LOG_LEVEL_KEY,
+        profileName: profileName,
         type: "text",
     },
     {
@@ -104,26 +142,42 @@ const getConfigFormFields = () => [
                 for syntax.
             </span>
         ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).timestampKey,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_KEY,
+        initialValue: getConfig(CONFIG_KEY.DECODER_TIMESTAMP_KEY, profileName),
         label: "Decoder: Timestamp key",
+        name: CONFIG_KEY.DECODER_TIMESTAMP_KEY,
+        profileName: profileName,
         type: "text",
     },
     {
-        helperText: "[Unstructured-IR] Format string for timestamps in Day.js format.",
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).timestampFormatString,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_FORMAT_STRING,
+        helperText: <span>[Unstructured-IR] Format string for timestamps in Day.js format.</span>,
+        initialValue: getConfig(CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING, profileName),
         label: "Decoder: Timestamp format string",
+        name: CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING,
+        profileName: profileName,
         type: "text",
-    },
-    {
-        helperText: "Number of log messages to display per page.",
-        initialValue: getConfig(CONFIG_KEY.PAGE_SIZE),
-        key: LOCAL_STORAGE_KEY.PAGE_SIZE,
-        label: "View: Page size",
-        type: "number",
     },
 ];
+
+/**
+ * Sets a configuration value if and only if it differs from the currently stored value.
+ *
+ * @param key
+ * @param value
+ * @param profileName
+ * @return
+ */
+const setConfigIfChanged = <T extends CONFIG_KEY>(
+    key: T,
+    value: ConfigMap[T],
+    profileName: Nullable<ProfileName> = null,
+): Nullable<string> => {
+    const oldValue = settingsManager.getConfig(key, profileName);
+    if (oldValue !== value) {
+        return setConfig(key, value, profileName);
+    }
+
+    return null;
+};
 
 /**
  * Handles the reset event for the configuration form.
@@ -142,43 +196,87 @@ const handleConfigFormReset = (ev: React.FormEvent) => {
  * @return
  */
 const SettingsTabPanel = () => {
-    const loadPageByAction = useViewStore((state) => state.loadPageByAction);
+    const {loadPageByAction} = useViewStore.getState();
+    const [selectedProfileName, setSelectedProfileName] = useState<ProfileName>(
+        settingsManager.getActiveProfileName(),
+    );
+    const [canApply, setCanApply] = useState<boolean>(false);
 
-    const handleConfigFormSubmit = useCallback((ev: React.FormEvent) => {
-        ev.preventDefault();
-        const formData = new FormData(ev.target as HTMLFormElement);
-        const getFormDataValue = (key: string) => formData.get(key) as string;
+    const [settingsVersion, setSettingsVersion] = useState<number>(0);
+    const handleConfigValuesChanged = useCallback(() => {
+        setSettingsVersion(settingsVersion + 1);
+    }, [settingsVersion]);
 
-        const formatString = getFormDataValue(LOCAL_STORAGE_KEY.DECODER_OPTIONS_FORMAT_STRING);
-        const logLevelKey = getFormDataValue(LOCAL_STORAGE_KEY.DECODER_OPTIONS_LOG_LEVEL_KEY);
-        const timestampFormatString = getFormDataValue(
-            LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_FORMAT_STRING
-        );
-        const timestampKey = getFormDataValue(LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_KEY);
-        const pageSize = getFormDataValue(LOCAL_STORAGE_KEY.PAGE_SIZE);
+    const isForced = useSyncExternalStore((onStoreChange) => {
+        return settingsManager.subscribe(onStoreChange);
+    }, () => {
+        return settingsManager.getIsForced();
+    });
 
-        let error: Nullable<string> = null;
-        error ||= setConfig({
-            key: CONFIG_KEY.DECODER_OPTIONS,
-            value: {formatString, logLevelKey, timestampFormatString, timestampKey},
-        });
-        error ||= setConfig({
-            key: CONFIG_KEY.PAGE_SIZE,
-            value: Number(pageSize),
-        });
+    const activeProfileName = useSyncExternalStore((onStoreChange) => {
+        return settingsManager.subscribe(onStoreChange);
+    }, () => {
+        return settingsManager.getActiveProfileName();
+    });
 
-        if (null !== error) {
-            const {postPopUp} = useNotificationStore.getState();
-            postPopUp({
-                level: LOG_LEVEL.ERROR,
-                message: error,
-                timeoutMillis: DO_NOT_TIMEOUT_VALUE,
-                title: "Unable to apply config.",
-            });
-        } else {
-            loadPageByAction({code: ACTION_NAME.RELOAD, args: null});
-        }
-    }, [loadPageByAction]);
+    const profileNames = settingsManager.getProfileNames();
+
+    useEffect(() => {
+        return settingsManager.subscribe(handleConfigValuesChanged);
+    }, [loadPageByAction,
+        handleConfigValuesChanged]);
+
+    useEffect(() => {
+        setSelectedProfileName(activeProfileName);
+        loadPageByAction({code: ACTION_NAME.RELOAD, args: null});
+    }, [loadPageByAction,
+        activeProfileName]);
+
+    const handleConfigFormSubmit = useCallback(
+        (ev: React.FormEvent) => {
+            ev.preventDefault();
+            const formData = new FormData(ev.target as HTMLFormElement);
+            const getFormDataValue = (key: string) => formData.get(key) as string;
+
+            const formatString = getFormDataValue(CONFIG_KEY.DECODER_FORMAT_STRING);
+            const logLevelKey = getFormDataValue(CONFIG_KEY.DECODER_LOG_LEVEL_KEY);
+            const timestampFormatString = getFormDataValue(
+                CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING,
+            );
+            const timestampKey = getFormDataValue(CONFIG_KEY.DECODER_TIMESTAMP_KEY);
+            const pageSize = getFormDataValue(CONFIG_KEY.PAGE_SIZE);
+
+            settingsManager.setActiveProfileName(selectedProfileName);
+
+            let error: Nullable<string> = setConfigIfChanged(
+                CONFIG_KEY.DECODER_FORMAT_STRING,
+                formatString,
+            );
+
+            error ||= setConfigIfChanged(CONFIG_KEY.DECODER_LOG_LEVEL_KEY, logLevelKey);
+            error ||= setConfigIfChanged(
+                CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING,
+                timestampFormatString,
+            );
+            error ||= setConfigIfChanged(CONFIG_KEY.DECODER_TIMESTAMP_KEY, timestampKey);
+            error ||= setConfigIfChanged(CONFIG_KEY.PAGE_SIZE, Number(pageSize));
+
+            if (null !== error) {
+                const {postPopUp} = useNotificationStore.getState();
+                postPopUp({
+                    level: LOG_LEVEL.ERROR,
+                    message: error,
+                    timeoutMillis: DO_NOT_TIMEOUT_VALUE,
+                    title: "Unable to apply config.",
+                });
+            } else {
+                setCanApply(false);
+                loadPageByAction({code: ACTION_NAME.RELOAD, args: null});
+            }
+        },
+        [loadPageByAction,
+            selectedProfileName],
+    );
 
     return (
         <CustomTabPanel
@@ -190,31 +288,145 @@ const SettingsTabPanel = () => {
                 tabIndex={-1}
                 onReset={handleConfigFormReset}
                 onSubmit={handleConfigFormSubmit}
+                onChange={(ev) => {
+                    try {
+                        const inputElement = ev.target as HTMLInputElement;
+                        if ("newProfileName" !== inputElement.name) {
+                            setCanApply(true);
+                        }
+                    } catch (e: unknown) {
+                        console.log(`Settings form changed casued by a element without name: ${
+                            e instanceof Error ?
+                                e.message :
+                                JSON.stringify(e)}`);
+                    }
+                }}
             >
                 <Box className={"settings-form-fields-container"}>
                     <ThemeSwitchFormField/>
-                    {getConfigFormFields().map((field, index) => (
-                        <FormControl key={index}>
-                            <FormLabel>
-                                {field.label}
-                            </FormLabel>
-                            {"number" === field.type ?
-                                <Input
-                                    defaultValue={field.initialValue}
-                                    name={field.key}
-                                    type={"number"}/> :
-                                <Textarea
-                                    defaultValue={field.initialValue}
-                                    name={field.key}/>}
-                            <FormHelperText>
-                                {field.helperText}
-                            </FormHelperText>
-                        </FormControl>
+
+                    {getGlobalFormFields().map((props) => (
+                        <ConfigInput
+                            key={`${props.name} ${settingsVersion}`}
+                            {...props}/>
+                    ))}
+                    <FormControl>
+                        <FormLabel>Profile</FormLabel>
+                        <Stack
+                            direction={"row"}
+                            gap={0.3}
+                        >
+                            <Select
+                                name={"selectedProfile"}
+                                size={"sm"}
+                                sx={{flexGrow: 1}}
+                                value={selectedProfileName}
+                                onChange={(_, newProfileName) => {
+                                    if (
+                                        null === newProfileName ||
+                                        "string" !== typeof newProfileName
+                                    ) {
+                                        throw new Error(`Unexpected newValue: ${newProfileName}`);
+                                    }
+                                    settingsManager.setActiveProfileName(newProfileName);
+                                }}
+                            >
+                                {Array.from(profileNames).map((profileName) => (
+                                    <Option
+                                        key={profileName}
+                                        value={profileName}
+                                    >
+                                        <Typography sx={{flexGrow: 1}}>
+                                            {profileName}
+                                        </Typography>
+                                        <Stack
+                                            direction={"row"}
+                                            gap={1}
+                                        >
+                                            {settingsManager.getActiveProfileName() ===
+                                                profileName && (
+                                                <Tooltip title={"Active"}>
+                                                    <CheckBoxIcon/>
+                                                </Tooltip>
+                                            )}
+                                            {settingsManager.isProfileModified(profileName) && (
+                                                <Tooltip title={"Locally stored"}>
+                                                    <SdStorageIcon/>
+                                                </Tooltip>
+                                            )}
+                                        </Stack>
+                                    </Option>
+                                ))}
+                            </Select>
+                            <Tooltip title={"Force the profile on all file paths"}>
+                                <ToggleButtonGroup
+                                    size={"sm"}
+                                    spacing={0.1}
+                                    variant={"soft"}
+                                    value={[isForced ?
+                                        "forced" :
+                                        ""]}
+                                >
+                                    <IconButton
+                                        value={"forced"}
+                                        variant={"soft"}
+                                        onClick={() => {
+                                            settingsManager.setIsForced(!isForced);
+                                        }}
+                                    >
+                                        <LockIcon/>
+                                    </IconButton>
+                                </ToggleButtonGroup>
+                            </Tooltip>
+
+                            {settingsManager.isProfileModified(selectedProfileName) && (
+                                <Tooltip title={"Delete this profile"}>
+                                    {
+                                        <IconButton
+                                            size={"sm"}
+                                            value={"forced"}
+                                            variant={"soft"}
+                                            onClick={() => {
+                                                settingsManager.removeProfile(selectedProfileName);
+                                                loadPageByAction({
+                                                    code: ACTION_NAME.RELOAD,
+                                                    args: null,
+                                                });
+                                            }}
+                                        >
+                                            <DeleteIcon/>
+                                        </IconButton>
+                                    }
+                                </Tooltip>
+                            )}
+                            <CreateProfileButton
+                                onCreateProfile={(newProfileName) => {
+                                    try {
+                                        settingsManager.createProfile(newProfileName);
+                                        settingsManager.setActiveProfileName(newProfileName);
+                                    } catch (e: unknown) {
+                                        throw new Error(`Failed to create a new profile: ${
+                                            e instanceof Error ?
+                                                e.message :
+                                                JSON.stringify(e)}`);
+                                    }
+                                }}/>
+                        </Stack>
+                        <FormHelperText>
+                            Below fields are managed by the selected profile.
+                        </FormHelperText>
+                    </FormControl>
+
+                    {getProfileManagedFormFields(selectedProfileName).map((props) => (
+                        <ConfigInput
+                            key={`${props.name} ${settingsVersion}`}
+                            {...props}/>
                     ))}
                 </Box>
                 <Divider/>
                 <Button
                     color={"primary"}
+                    disabled={false === canApply}
                     type={"submit"}
                 >
                     Apply
