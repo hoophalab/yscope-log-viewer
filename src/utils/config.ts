@@ -2,197 +2,57 @@ import {Nullable} from "../typings/common";
 import {
     CONFIG_KEY,
     ConfigMap,
-    ConfigUpdate,
-    LOCAL_STORAGE_KEY,
-    THEME_NAME,
+    ProfileName,
 } from "../typings/config";
-import {DecoderOptions} from "../typings/decoders";
-import {TAB_NAME} from "../typings/tab";
+import {
+    CONFIG_DEFAULT,
+    DEFAULT_PROFILE_NAME,
+    SettingsManager,
+} from "./settingsManager";
 
 
-const EXPORT_LOGS_CHUNK_SIZE = 10_000;
-const MAX_PAGE_SIZE = 1_000_000;
-const QUERY_CHUNK_SIZE = 10_000;
-
-/**
- * Exception to be thrown when the "THEME" configuration is specified.
- */
-const UNMANAGED_THEME_THROWABLE =
-    new Error(`"${CONFIG_KEY.THEME}" cannot be managed using these utilities.`);
-
-/**
- * The default configuration values.
- */
-const CONFIG_DEFAULT: ConfigMap = Object.freeze({
-    [CONFIG_KEY.DECODER_OPTIONS]: {
-        formatString: "",
-        logLevelKey: "log.level",
-        timestampFormatString: "YYYY-MM-DDTHH:mm:ss.SSSZ",
-        timestampKey: "timestamp",
-    },
-    [CONFIG_KEY.INITIAL_TAB_NAME]: TAB_NAME.FILE_INFO,
-    [CONFIG_KEY.THEME]: THEME_NAME.SYSTEM,
-    [CONFIG_KEY.PAGE_SIZE]: 10_000,
-});
-
-/**
- * Validates the config denoted by the given key and value.
- *
- * @param props
- * @param props.key
- * @param props.value
- * @return `null` if the value is valid, or an error message otherwise.
- * @throws {Error} If the config item cannot be managed by these config utilities.
- */
-const testConfig = ({key, value}: ConfigUpdate): Nullable<string> => {
-    let result = null;
-    switch (key) {
-        case CONFIG_KEY.DECODER_OPTIONS:
-            if (0 === value.logLevelKey.length) {
-                result = "Log level key cannot be empty.";
-            } else if (0 === value.timestampFormatString.length) {
-                result = "Timestamp format string cannot be empty.";
-            } else if (0 === value.timestampKey.length) {
-                result = "Timestamp key cannot be empty.";
-            }
-            break;
-        case CONFIG_KEY.INITIAL_TAB_NAME:
-            // This config option is not intended for direct user input.
-            break;
-        case CONFIG_KEY.PAGE_SIZE:
-            if (0 >= value || MAX_PAGE_SIZE < value) {
-                result = `Page size must be greater than 0 and less than ${MAX_PAGE_SIZE + 1}.`;
-            }
-            break;
-        case CONFIG_KEY.THEME:
-            throw UNMANAGED_THEME_THROWABLE;
-        /* c8 ignore next */
-        default: break;
-    }
-
-    return result;
-};
-
+const settingsManager = await SettingsManager.create("yscope-log-viewer", "profile-presets.json");
 
 /**
  * Updates the config denoted by the given key and value.
  *
- * @param props
- * @param props.key
- * @param props.value
+ * @param key
+ * @param value
+ * @param profileName
  * @return `null` if the update succeeds, or an error message otherwise.
- * @throws {Error} If the config item cannot be managed by these config utilities.
  */
-const setConfig = ({key, value}: ConfigUpdate): Nullable<string> => {
-    const error = testConfig({key, value} as ConfigUpdate);
-    if (null !== error) {
-        console.error(`Unable to set ${key}=${JSON.stringify(value)}: ${error}`);
+const setConfig = <T extends CONFIG_KEY>(
+    key: T,
+    value: ConfigMap[T],
+    profileName: Nullable<ProfileName> = null,
+): Nullable<string> => {
+    try {
+        settingsManager.setConfig(key, value, profileName);
 
-        return error;
+        return null;
+    } catch (e: unknown) {
+        return `Failed to set config with key ${key}: ${
+            e instanceof Error ?
+                e.message :
+                JSON.stringify(e)
+        }.`;
     }
-
-    switch (key) {
-        case CONFIG_KEY.DECODER_OPTIONS:
-            window.localStorage.setItem(
-                LOCAL_STORAGE_KEY.DECODER_OPTIONS_FORMAT_STRING,
-                value.formatString
-            );
-            window.localStorage.setItem(
-                LOCAL_STORAGE_KEY.DECODER_OPTIONS_LOG_LEVEL_KEY,
-                value.logLevelKey
-            );
-            window.localStorage.setItem(
-                LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_FORMAT_STRING,
-                value.timestampFormatString
-            );
-            window.localStorage.setItem(
-                LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_KEY,
-                value.timestampKey
-            );
-            break;
-        case CONFIG_KEY.INITIAL_TAB_NAME:
-            window.localStorage.setItem(CONFIG_KEY.INITIAL_TAB_NAME, value.toString());
-            break;
-        case CONFIG_KEY.PAGE_SIZE:
-            window.localStorage.setItem(LOCAL_STORAGE_KEY.PAGE_SIZE, value.toString());
-            break;
-        /* c8 ignore start */
-        case CONFIG_KEY.THEME:
-            // Unexpected execution path.
-            break;
-        /* c8 ignore end */
-        /* c8 ignore next */
-        default: break;
-    }
-
-    return null;
 };
 
 /**
  * Retrieves the config value for the specified key.
  *
  * @param key
+ * @param profileName
  * @return The value.
- * @throws {Error} If the config item cannot be managed by these config utilities.
  */
-const getConfig = <T extends CONFIG_KEY>(key: T): ConfigMap[T] => {
-    let value = null;
-
-    // Read values from `localStorage`.
-    switch (key) {
-        case CONFIG_KEY.DECODER_OPTIONS:
-            value = {
-                formatString: window.localStorage.getItem(
-                    LOCAL_STORAGE_KEY.DECODER_OPTIONS_FORMAT_STRING
-                ),
-                logLevelKey: window.localStorage.getItem(
-                    LOCAL_STORAGE_KEY.DECODER_OPTIONS_LOG_LEVEL_KEY
-                ),
-                timestampFormatString: window.localStorage.getItem(
-                    LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_FORMAT_STRING
-                ),
-                timestampKey: window.localStorage.getItem(
-                    LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_KEY
-                ),
-            } as DecoderOptions;
-            break;
-        case CONFIG_KEY.INITIAL_TAB_NAME:
-            value = window.localStorage.getItem(LOCAL_STORAGE_KEY.INITIAL_TAB_NAME);
-            break;
-        case CONFIG_KEY.PAGE_SIZE:
-            value = window.localStorage.getItem(LOCAL_STORAGE_KEY.PAGE_SIZE);
-            break;
-        case CONFIG_KEY.THEME:
-            throw UNMANAGED_THEME_THROWABLE;
-        /* c8 ignore next */
-        default: break;
-    }
-
-    // Fallback to default values if the config is absent from `localStorage`.
-    if (null === value ||
-        ("object" === typeof value && Object.values(value).includes(null))) {
-        value = CONFIG_DEFAULT[key];
-        setConfig({key, value} as ConfigUpdate);
-    }
-
-    // Process values read from `localStorage`.
-    switch (key) {
-        case CONFIG_KEY.PAGE_SIZE:
-            value = Number(value);
-            break;
-        default: break;
-    }
-
-    return value as ConfigMap[T];
+const getConfig = <T extends CONFIG_KEY>(
+    key: T,
+    profileName: Nullable<ProfileName> = null,
+): ConfigMap[T] => {
+    return settingsManager.getConfig(key, profileName);
 };
 
 export {
-    CONFIG_DEFAULT,
-    EXPORT_LOGS_CHUNK_SIZE,
-    getConfig,
-    MAX_PAGE_SIZE,
-    QUERY_CHUNK_SIZE,
-    setConfig,
-    testConfig,
-    UNMANAGED_THEME_THROWABLE,
+    CONFIG_DEFAULT, DEFAULT_PROFILE_NAME, getConfig, setConfig, settingsManager,
 };

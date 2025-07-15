@@ -2,6 +2,10 @@
 import jsBeautify from "js-beautify";
 
 import {
+    EXPORT_LOGS_CHUNK_SIZE,
+    QUERY_CHUNK_SIZE,
+} from "../../typings/config";
+import {
     Decoder,
     DecodeResult,
     DecoderOptions,
@@ -21,10 +25,6 @@ import {
     FileSrcType,
     PageData,
 } from "../../typings/worker";
-import {
-    EXPORT_LOGS_CHUNK_SIZE,
-    QUERY_CHUNK_SIZE,
-} from "../../utils/config";
 import {getChunkNum} from "../../utils/math";
 import {defer} from "../../utils/time";
 import {resolveDecoderAndFileType} from "./decodeUtils";

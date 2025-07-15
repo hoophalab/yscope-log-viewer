@@ -1,15 +1,14 @@
-import React, {useCallback} from "react";
+import React, {
+    useCallback,
+    useEffect,
+    useState,
+    useSyncExternalStore,
+} from "react";
 
 import {
     Box,
     Button,
     Divider,
-    FormControl,
-    FormHelperText,
-    FormLabel,
-    Input,
-    Link,
-    Textarea,
 } from "@mui/joy";
 
 import useNotificationStore from "../../../../../stores/notificationStore";
@@ -17,7 +16,8 @@ import useViewStore from "../../../../../stores/viewStore";
 import {Nullable} from "../../../../../typings/common";
 import {
     CONFIG_KEY,
-    LOCAL_STORAGE_KEY,
+    ConfigMap,
+    ProfileName,
 } from "../../../../../typings/config";
 import {LOG_LEVEL} from "../../../../../typings/logs";
 import {DO_NOT_TIMEOUT_VALUE} from "../../../../../typings/notifications";
@@ -29,101 +29,40 @@ import {ACTION_NAME} from "../../../../../utils/actions";
 import {
     getConfig,
     setConfig,
+    settingsManager,
 } from "../../../../../utils/config";
 import CustomTabPanel from "../CustomTabPanel";
+import ConfigInput from "./ConfigInput";
+import ProfileControls from "./ProfileControls";
 import ThemeSwitchFormField from "./ThemeSwitchFormField";
+import {
+    GLOBAL_CONFIG_DESCRIPTIONS,
+    PROFILE_MANAGED_CONFIG_DESCRIPTIONS,
+} from "./utils";
 
 import "./index.css";
 
 
 /**
- * Gets form fields information for user input of configuration values.
+ * Sets a configuration value if and only if it differs from the currently stored value.
  *
- * @return A list of form fields information.
+ * @param key
+ * @param value
+ * @param profileName
+ * @return
  */
-const getConfigFormFields = () => [
-    {
-        helperText: (
-            <span>
-                [Structured] Format string for formatting a structured log event as plain text.
-                Leave blank to display the entire log event. See
-                {" "}
-                <Link
-                    href={"https://docs.yscope.com/yscope-log-viewer/main/user-guide/struct-logs/format/index.html"}
-                    level={"body-sm"}
-                    rel={"noopener"}
-                    target={"_blank"}
-                >
-                    here
-                </Link>
-                {" "}
-                for syntax.
-            </span>
-        ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).formatString,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_FORMAT_STRING,
-        label: "Decoder: Format string",
-        type: "text",
-    },
-    {
-        helperText: (
-            <span>
-                [Structured] Key that maps to each log event&apos;s log level. See
-                {" "}
-                <Link
-                    href={"https://docs.yscope.com/yscope-log-viewer/main/user-guide/struct-logs/specifying-keys.html#syntax"}
-                    level={"body-sm"}
-                    rel={"noopener"}
-                    target={"_blank"}
-                >
-                    here
-                </Link>
-                {" "}
-                for syntax.
-            </span>
-        ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).logLevelKey,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_LOG_LEVEL_KEY,
-        label: "Decoder: Log level key",
-        type: "text",
-    },
-    {
-        helperText: (
-            <span>
-                [Structured] Key that maps to each log event&apos;s timestamp. See
-                {" "}
-                <Link
-                    href={"https://docs.yscope.com/yscope-log-viewer/main/user-guide/struct-logs/specifying-keys.html#syntax"}
-                    level={"body-sm"}
-                    rel={"noopener"}
-                    target={"_blank"}
-                >
-                    here
-                </Link>
-                {" "}
-                for syntax.
-            </span>
-        ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).timestampKey,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_KEY,
-        label: "Decoder: Timestamp key",
-        type: "text",
-    },
-    {
-        helperText: "[Unstructured-IR] Format string for timestamps in Day.js format.",
-        initialValue: getConfig(CONFIG_KEY.DECODER_OPTIONS).timestampFormatString,
-        key: LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_FORMAT_STRING,
-        label: "Decoder: Timestamp format string",
-        type: "text",
-    },
-    {
-        helperText: "Number of log messages to display per page.",
-        initialValue: getConfig(CONFIG_KEY.PAGE_SIZE),
-        key: LOCAL_STORAGE_KEY.PAGE_SIZE,
-        label: "View: Page size",
-        type: "number",
-    },
-];
+const setConfigIfChanged = <T extends CONFIG_KEY>(
+    key: T,
+    value: ConfigMap[T],
+    profileName: Nullable<ProfileName> = null,
+): Nullable<string> => {
+    const oldValue = settingsManager.getConfig(key, profileName);
+    if (oldValue !== value) {
+        return setConfig(key, value, profileName);
+    }
+
+    return null;
+};
 
 /**
  * Handles the reset event for the configuration form.
@@ -142,43 +81,75 @@ const handleConfigFormReset = (ev: React.FormEvent) => {
  * @return
  */
 const SettingsTabPanel = () => {
-    const loadPageByAction = useViewStore((state) => state.loadPageByAction);
+    const [canApply, setCanApply] = useState<boolean>(false);
 
-    const handleConfigFormSubmit = useCallback((ev: React.FormEvent) => {
-        ev.preventDefault();
-        const formData = new FormData(ev.target as HTMLFormElement);
-        const getFormDataValue = (key: string) => formData.get(key) as string;
+    const [settingsVersion, setSettingsVersion] = useState<number>(0);
+    const handleConfigValuesChanged = useCallback(() => {
+        setSettingsVersion(settingsVersion + 1);
+    }, [settingsVersion]);
 
-        const formatString = getFormDataValue(LOCAL_STORAGE_KEY.DECODER_OPTIONS_FORMAT_STRING);
-        const logLevelKey = getFormDataValue(LOCAL_STORAGE_KEY.DECODER_OPTIONS_LOG_LEVEL_KEY);
-        const timestampFormatString = getFormDataValue(
-            LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_FORMAT_STRING
-        );
-        const timestampKey = getFormDataValue(LOCAL_STORAGE_KEY.DECODER_OPTIONS_TIMESTAMP_KEY);
-        const pageSize = getFormDataValue(LOCAL_STORAGE_KEY.PAGE_SIZE);
+    useEffect(() => {
+        return settingsManager.subscribe(handleConfigValuesChanged);
+    }, [handleConfigValuesChanged]);
 
-        let error: Nullable<string> = null;
-        error ||= setConfig({
-            key: CONFIG_KEY.DECODER_OPTIONS,
-            value: {formatString, logLevelKey, timestampFormatString, timestampKey},
-        });
-        error ||= setConfig({
-            key: CONFIG_KEY.PAGE_SIZE,
-            value: Number(pageSize),
-        });
+    const activeProfileName = useSyncExternalStore((onStoreChange) => {
+        return settingsManager.subscribe(onStoreChange);
+    }, () => {
+        return settingsManager.getActiveProfileName();
+    });
 
-        if (null !== error) {
-            const {postPopUp} = useNotificationStore.getState();
-            postPopUp({
-                level: LOG_LEVEL.ERROR,
-                message: error,
-                timeoutMillis: DO_NOT_TIMEOUT_VALUE,
-                title: "Unable to apply config.",
-            });
-        } else {
-            loadPageByAction({code: ACTION_NAME.RELOAD, args: null});
-        }
-    }, [loadPageByAction]);
+    // We currently reload the page when `activeProfileName` changes or a profile is deleted.
+    // Ideally, we'd use `settingsVersion` to refresh on config updates.
+    // However, `resetCachedPageSize` in `components/Editor/index.tsx` updates `settingsVersion`
+    // on reload, which creates an infinite loop.
+    useEffect(() => {
+        const {loadPageByAction} = useViewStore.getState();
+        loadPageByAction({code: ACTION_NAME.RELOAD, args: null});
+    }, [activeProfileName]);
+
+    const handleConfigFormSubmit = useCallback(
+        (ev: React.FormEvent) => {
+            ev.preventDefault();
+            const formData = new FormData(ev.target as HTMLFormElement);
+            const getFormDataValue = (key: string) => formData.get(key) as string;
+
+            const formatString = getFormDataValue(CONFIG_KEY.DECODER_FORMAT_STRING);
+            const logLevelKey = getFormDataValue(CONFIG_KEY.DECODER_LOG_LEVEL_KEY);
+            const timestampFormatString = getFormDataValue(
+                CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING,
+            );
+            const timestampKey = getFormDataValue(CONFIG_KEY.DECODER_TIMESTAMP_KEY);
+            const pageSize = getFormDataValue(CONFIG_KEY.PAGE_SIZE);
+
+            let error: Nullable<string> = setConfigIfChanged(
+                CONFIG_KEY.DECODER_FORMAT_STRING,
+                formatString,
+            );
+
+            error ||= setConfigIfChanged(CONFIG_KEY.DECODER_LOG_LEVEL_KEY, logLevelKey);
+            error ||= setConfigIfChanged(
+                CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING,
+                timestampFormatString,
+            );
+            error ||= setConfigIfChanged(CONFIG_KEY.DECODER_TIMESTAMP_KEY, timestampKey);
+            error ||= setConfigIfChanged(CONFIG_KEY.PAGE_SIZE, Number(pageSize));
+
+            if (null !== error) {
+                const {postPopUp} = useNotificationStore.getState();
+                postPopUp({
+                    level: LOG_LEVEL.ERROR,
+                    message: error,
+                    timeoutMillis: DO_NOT_TIMEOUT_VALUE,
+                    title: "Unable to apply config.",
+                });
+            } else {
+                setCanApply(false);
+                const {loadPageByAction} = useViewStore.getState();
+                loadPageByAction({code: ACTION_NAME.RELOAD, args: null});
+            }
+        },
+        [],
+    );
 
     return (
         <CustomTabPanel
@@ -190,31 +161,43 @@ const SettingsTabPanel = () => {
                 tabIndex={-1}
                 onReset={handleConfigFormReset}
                 onSubmit={handleConfigFormSubmit}
+                onChange={(ev) => {
+                    try {
+                        const inputElement = ev.target as HTMLInputElement;
+                        if ("newProfileName" !== inputElement.name) {
+                            setCanApply(true);
+                        }
+                    } catch (e: unknown) {
+                        console.log(`Settings form changed casued by a element without name: ${
+                            e instanceof Error ?
+                                e.message :
+                                JSON.stringify(e)}`);
+                    }
+                }}
             >
                 <Box className={"settings-form-fields-container"}>
                     <ThemeSwitchFormField/>
-                    {getConfigFormFields().map((field, index) => (
-                        <FormControl key={index}>
-                            <FormLabel>
-                                {field.label}
-                            </FormLabel>
-                            {"number" === field.type ?
-                                <Input
-                                    defaultValue={field.initialValue}
-                                    name={field.key}
-                                    type={"number"}/> :
-                                <Textarea
-                                    defaultValue={field.initialValue}
-                                    name={field.key}/>}
-                            <FormHelperText>
-                                {field.helperText}
-                            </FormHelperText>
-                        </FormControl>
+
+                    {GLOBAL_CONFIG_DESCRIPTIONS.map((desc) => (
+                        <ConfigInput
+                            initialValue={String(getConfig(desc.name))}
+                            key={`${desc.name} ${settingsVersion}`}
+                            profileName={null}
+                            {...desc}/>
+                    ))}
+                    <ProfileControls selectedProfileName={activeProfileName}/>
+                    {PROFILE_MANAGED_CONFIG_DESCRIPTIONS.map((desc) => (
+                        <ConfigInput
+                            initialValue={String(getConfig(desc.name))}
+                            key={`${desc.name} ${settingsVersion}`}
+                            profileName={activeProfileName}
+                            {...desc}/>
                     ))}
                 </Box>
                 <Divider/>
                 <Button
                     color={"primary"}
+                    disabled={false === canApply}
                     type={"submit"}
                 >
                     Apply

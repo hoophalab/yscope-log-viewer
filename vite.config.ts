@@ -20,6 +20,7 @@ export default defineConfig({
             },
         },
         sourcemap: true,
+        target: "ES2022",
     },
     optimizeDeps: {
         // Exclude the worker or else `ClpFfiJs-worker.wasm` won't be found when served from the

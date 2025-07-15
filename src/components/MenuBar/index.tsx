@@ -14,6 +14,7 @@ import useLogFileStore from "../../stores/logFileStore";
 import useUiStore from "../../stores/uiStore";
 import {UI_ELEMENT} from "../../typings/states";
 import {CURSOR_CODE} from "../../typings/worker";
+import {settingsManager} from "../../utils/config";
 import {openFile} from "../../utils/file";
 import {isDisabled} from "../../utils/states";
 import ExportLogsButton from "./ExportLogsButton";
@@ -34,6 +35,9 @@ const MenuBar = () => {
 
     const handleOpenFile = useCallback(() => {
         openFile((file) => {
+            const profileName = settingsManager.resolveProfileName(file);
+            settingsManager.setActiveProfileName(profileName);
+
             const {loadFile} = useLogFileStore.getState();
             loadFile(file, {code: CURSOR_CODE.LAST_EVENT, args: null});
         });

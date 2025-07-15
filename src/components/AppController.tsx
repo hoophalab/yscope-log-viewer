@@ -13,6 +13,7 @@ import {
     CURSOR_CODE,
     CursorType,
 } from "../typings/worker";
+import {settingsManager} from "../utils/config";
 import {clamp} from "../utils/math.ts";
 import {
     getWindowUrlHashParams,
@@ -198,6 +199,10 @@ const AppController = ({children}: AppControllerProps) => {
                     args: {eventNum: hashParams.logEventNum},
                 };
             }
+
+            const profileName = settingsManager.resolveProfileName(searchParams.filePath);
+            settingsManager.setActiveProfileName(profileName);
+
             const {loadFile} = useLogFileStore.getState();
             loadFile(searchParams.filePath, cursor);
         }

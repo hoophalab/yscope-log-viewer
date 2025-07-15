@@ -1,0 +1,13 @@
+{
+  "default": {
+    "config": {
+      "decoderOptions/formatString": "",
+      "decoderOptions/logLevelKey": "log.level",
+      "decoderOptions/timestampKey": "@timestamp",
+      "decoderOptions/timestampFormatString": "YYYY-MM-DDTHH:mm:ss.SSSZ",
+      "pageSize": 10000
+    },
+    "filePathRegExps": [],
+    "lastModificationTimestampMillis": 0
+  }
+}
