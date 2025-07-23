@@ -48,38 +48,32 @@ import {
     settingsManager,
 } from "../../../../../utils/config";
 import CustomTabPanel from "../CustomTabPanel";
-import ConfigInput, {ConfigInputProps} from "./ConfigInput";
+import ConfigInput, {ConfigInputProps, as CONFIG_INPUT_TYPE} from "./ConfigInput";
 import CreateProfileButton from "./CreateProfileButton";
 import ThemeSwitchFormField from "./ThemeSwitchFormField";
 
 import "./index.css";
 
 
-/**
- * Gets form fields information for user input of global configuration values.
- *
- * @return A list of form fields information.
- */
-const getGlobalFormFields = (): ConfigInputProps[] => [
+interface ConfigDescription {
+    description: React.ReactElement;
+    configKey: CONFIG_KEY;
+    label: string;
+    inputType: CONFIG_INPUT_TYPE;
+}
+
+const GOBAL_CONFIG_DESCRIPTIONS: ConfigDescription[] = [
     {
-        helperText: <span>Number of log messages to display per page.</span>,
-        initialValue: String(getConfig(CONFIG_KEY.PAGE_SIZE)),
+        description: <span>Number of log messages to display per page.</span>,
         label: "View: Page size",
-        name: CONFIG_KEY.PAGE_SIZE,
-        profileName: null,
-        type: "number",
+        configKey: CONFIG_KEY.PAGE_SIZE,
+        inputType: CONFIG_INPUT_TYPE.number,
     },
 ];
 
-/**
- * Gets form fields information for user input of profiled configuration values.
- *
- * @param profileName
- * @return A list of form fields information.
- */
-const getProfileManagedFormFields = (profileName: ProfileName): ConfigInputProps[] => [
+const PROFILE_MANAGED_CONFIG_DESCRIPTIONS: ConfigDescription[] = [
     {
-        helperText: (
+        description: (
             <span>
                 [Structured] Format string for formatting a structured log event as plain text.
                 Leave blank to display the entire log event. See
@@ -96,14 +90,12 @@ const getProfileManagedFormFields = (profileName: ProfileName): ConfigInputProps
                 for syntax.
             </span>
         ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_FORMAT_STRING, profileName),
         label: "Decoder: Format string",
-        name: CONFIG_KEY.DECODER_FORMAT_STRING,
-        profileName: profileName,
-        type: "text",
+        configKey: CONFIG_KEY.DECODER_FORMAT_STRING,
+        inputType: CONFIG_INPUT_TYPE.string,
     },
     {
-        helperText: (
+        description: (
             <span>
                 [Structured] Key that maps to each log event&apos;s log level. See
                 {" "}
@@ -119,14 +111,12 @@ const getProfileManagedFormFields = (profileName: ProfileName): ConfigInputProps
                 for syntax.
             </span>
         ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_LOG_LEVEL_KEY, profileName),
         label: "Decoder: Log level key",
-        name: CONFIG_KEY.DECODER_LOG_LEVEL_KEY,
-        profileName: profileName,
-        type: "text",
+        configKey: CONFIG_KEY.DECODER_LOG_LEVEL_KEY,
+        inputType: CONFIG_INPUT_TYPE.string,
     },
     {
-        helperText: (
+        description: (
             <span>
                 [Structured] Key that maps to each log event&apos;s timestamp. See
                 {" "}
@@ -142,19 +132,15 @@ const getProfileManagedFormFields = (profileName: ProfileName): ConfigInputProps
                 for syntax.
             </span>
         ),
-        initialValue: getConfig(CONFIG_KEY.DECODER_TIMESTAMP_KEY, profileName),
         label: "Decoder: Timestamp key",
-        name: CONFIG_KEY.DECODER_TIMESTAMP_KEY,
-        profileName: profileName,
-        type: "text",
+        configKey: CONFIG_KEY.DECODER_TIMESTAMP_KEY,
+        inputType: CONFIG_INPUT_TYPE.string,
     },
     {
-        helperText: <span>[Unstructured-IR] Format string for timestamps in Day.js format.</span>,
-        initialValue: getConfig(CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING, profileName),
+        description: <span>[Unstructured-IR] Format string for timestamps in Day.js format.</span>,
         label: "Decoder: Timestamp format string",
-        name: CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING,
-        profileName: profileName,
-        type: "text",
+        configKey: CONFIG_KEY.DECODER_TIMESTAMP_FORMAT_STRING,
+        inputType: CONFIG_INPUT_TYPE.string,
     },
 ];
 
@@ -288,19 +274,6 @@ const SettingsTabPanel = () => {
                 tabIndex={-1}
                 onReset={handleConfigFormReset}
                 onSubmit={handleConfigFormSubmit}
-                onChange={(ev) => {
-                    try {
-                        const inputElement = ev.target as HTMLInputElement;
-                        if ("newProfileName" !== inputElement.name) {
-                            setCanApply(true);
-                        }
-                    } catch (e: unknown) {
-                        console.log(`Settings form changed casued by a element without name: ${
-                            e instanceof Error ?
-                                e.message :
-                                JSON.stringify(e)}`);
-                    }
-                }}
             >
                 <Box className={"settings-form-fields-container"}>
                     <ThemeSwitchFormField/>
