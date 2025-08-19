@@ -42,6 +42,7 @@ const tryCreateDecoderByExtension = async (
                 fileTypeDef: entry,
             };
         } catch (e) {
+            console.error(e.stack)
             console.warn(`File extension matches ${entry.name}, but decoder creation failed.`, e);
         }
     }
