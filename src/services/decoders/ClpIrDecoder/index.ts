@@ -88,6 +88,8 @@ class ClpIrDecoder implements Decoder {
     }
 
     getFilteredLogEventMap (): FilteredLogEventMap {
+        console.error("map: ", this.#streamReader.getFilteredLogEventMap());
+
         return this.#streamReader.getFilteredLogEventMap();
     }
 
@@ -99,8 +101,13 @@ class ClpIrDecoder implements Decoder {
         return this.#streamReader.findNearestLogEventByTimestamp(BigInt(timestamp));
     }
 
-    setLogLevelFilter (logLevelFilter: LogLevelFilter): boolean {
-        this.#streamReader.filterLogEvents(logLevelFilter);
+    setLogLevelFilter (logLevelFilter: LogLevelFilter, kqlFilter: string): boolean {
+        try {
+            console.error("loglevelfilter: ", logLevelFilter);
+            this.#streamReader.filterLogEvents(logLevelFilter, kqlFilter);
+        } catch (e) {
+            console.error("wasm error", e);
+        }
 
         return true;
     }

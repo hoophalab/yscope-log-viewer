@@ -177,9 +177,11 @@ const LogLevelSelect = () => {
     const updateFilter = useCallback((logLevels: LOG_LEVEL[]) => {
         setSelectedLogLevels(logLevels);
 
-        filterLogs((0 === logLevels.length ?
+        const {filterLogs, setLogLevelFilter} = useViewStore.getState();
+        setLogLevelFilter((0 === logLevels.length ?
             null :
             logLevels));
+        filterLogs();
     }, [
         filterLogs,
         setSelectedLogLevels,

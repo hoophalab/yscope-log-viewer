@@ -23,6 +23,7 @@ import {
 } from "../../../../../utils/url";
 import CustomTabPanel from "../CustomTabPanel";
 import PanelTitleButton from "../PanelTitleButton";
+import FilterInputBox from "./FilterInputBox";
 import QueryInputBox from "./QueryInputBox";
 import ResultsGroup from "./ResultsGroup";
 
@@ -91,6 +92,7 @@ const SearchTabPanel = () => {
             }
         >
             <Box className={"search-tab-container"}>
+                <FilterInputBox/>
                 <QueryInputBox/>
                 <AccordionGroup
                     className={"query-results"}

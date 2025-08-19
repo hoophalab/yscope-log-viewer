@@ -42,9 +42,18 @@ interface ViewFormattingActions {
 
 type ViewFormattingSlice = ViewFormattingValues & ViewFormattingActions;
 
-interface ViewFilterSlice {
-    filterLogs: (filter: LogLevelFilter) => void;
+interface ViewFilterValues {
+    logLevelFilter: LogLevelFilter;
+    kqlFilter: string;
 }
+
+interface ViewFilterActions {
+    filterLogs: () => void;
+    setKqlFilter: (newValue: string) => void;
+    setLogLevelFilter: (newValue: LogLevelFilter) => void;
+}
+
+type ViewFilterSlice = ViewFilterValues & ViewFilterActions;
 
 type ViewState = ViewPageSlice & ViewEventSlice & ViewFormattingSlice & ViewFilterSlice;
 
@@ -52,6 +61,7 @@ export type {
     ViewEventSlice,
     ViewEventValues,
     ViewFilterSlice,
+    ViewFilterValues,
     ViewFormattingSlice,
     ViewFormattingValues,
     ViewPageSlice,
