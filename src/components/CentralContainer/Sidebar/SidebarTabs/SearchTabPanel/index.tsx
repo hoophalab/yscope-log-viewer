@@ -9,9 +9,11 @@ import {
 } from "@mui/joy";
 
 import ShareIcon from "@mui/icons-material/Share";
+import SubdirectoryArrowRightIcon from "@mui/icons-material/SubdirectoryArrowRight";
 import UnfoldLessIcon from "@mui/icons-material/UnfoldLess";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 
+import useLogFileStore from "../../../../../stores/logFileStore";
 import useQueryStore from "../../../../../stores/queryStore";
 import {
     TAB_DISPLAY_NAMES,
@@ -23,6 +25,7 @@ import {
 } from "../../../../../utils/url";
 import CustomTabPanel from "../CustomTabPanel";
 import PanelTitleButton from "../PanelTitleButton";
+import FilterInputBox from "./FilterInputBox";
 import QueryInputBox from "./QueryInputBox";
 import ResultsGroup from "./ResultsGroup";
 
@@ -35,6 +38,7 @@ import "./index.css";
  * @return
  */
 const SearchTabPanel = () => {
+    const fileTypeInfo = useLogFileStore((state) => state.fileTypeInfo);
     const queryResults = useQueryStore((state) => state.queryResults);
 
     const [isAllExpanded, setIsAllExpanded] = useState<boolean>(true);
@@ -57,12 +61,15 @@ const SearchTabPanel = () => {
         setQueryIsRegex(queryIsRegex);
         setQueryString(queryString);
 
-        copyPermalinkToClipboard({}, {
-            logEventNum: URL_HASH_PARAMS_DEFAULT.logEventNum,
-            queryString: queryString,
-            queryIsCaseSensitive: queryIsCaseSensitive,
-            queryIsRegex: queryIsRegex,
-        });
+        copyPermalinkToClipboard(
+            {},
+            {
+                logEventNum: URL_HASH_PARAMS_DEFAULT.logEventNum,
+                queryString: queryString,
+                queryIsCaseSensitive: queryIsCaseSensitive,
+                queryIsRegex: queryIsRegex,
+            },
+        );
     }, []);
 
     return (
@@ -91,7 +98,23 @@ const SearchTabPanel = () => {
             }
         >
             <Box className={"search-tab-container"}>
-                <QueryInputBox/>
+                {null !== fileTypeInfo &&
+                "CLP IR" === fileTypeInfo.name &&
+                true === fileTypeInfo.isStructured ?
+                    (
+                        <>
+                            <FilterInputBox/>
+                            <div className={"query-input-box-container"}>
+                                <div className={"arrow-right-icon"}>
+                                    <SubdirectoryArrowRightIcon/>
+                                </div>
+                                <QueryInputBox/>
+                            </div>
+                        </>
+                    ) :
+                    (
+                        <QueryInputBox/>
+                    )}
                 <AccordionGroup
                     className={"query-results"}
                     disableDivider={true}
@@ -109,6 +132,5 @@ const SearchTabPanel = () => {
         </CustomTabPanel>
     );
 };
-
 
 export default SearchTabPanel;
